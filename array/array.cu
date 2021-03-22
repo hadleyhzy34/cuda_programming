@@ -10,18 +10,36 @@ __global__ void print_threadIds()
 }
 
 
+__global__ void unique_idx_calc_threadIdx(int * input)
+{
+	int tid = threadIdx.x;
+	printf("threadIdx : %d, value : %d\n", tid, input[tid]);
+}
+
 int main()
 {	
 	//define number of threads for each dimension
-	int nx,ny,nz;
-	nx = 4;
-	ny = 4;
-	nz = 4;
-	
-	dim3 block(2,2,2);
-	dim3 grid(nx/block.x, ny/block.y, nz/block.z);
-
-	print_threadIds <<< grid, block >>> ();
+    int array_size = 8;
+    int array_byte_size = sizeof(int) * array_size;
+    int cpu_data[] = {23,9,4,53,65,12,1,33};
+    
+    //printout data from traditional cpu memory
+    for(int i=0;i<array_size;i++){
+        printf("the %d th element is: %d\n", i, cpu_data[i]);
+    }
+    printf("\n\n");
+    
+    //gpu data copied from cpu memory
+    int *gpu_data;
+    cudaMalloc((void**)&gpu_data, array_byte_size);
+    cudaMemcpy(gpu_data, cpu_data, array_byte_size, cudaMemcpyHostToDevice);
+    
+    //one thread block which has 8 threads
+	dim3 block(8);
+	dim3 grid(1);
+    
+    //printout thread id and each element from one array by using gpu
+	unique_idx_calc_threadIdx <<< grid, block >>> (gpu_data);
 	cudaDeviceSynchronize();
 
 	cudaDeviceReset();
