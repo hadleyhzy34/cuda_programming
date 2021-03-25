@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 
-#define gpuErrchk(ans) { gpuAssert((ans),__FILE__,__LINE__);}
+//#define gpuErrchk(ans) { gpuAssert((ans),__FILE__,__LINE__);}
 
 
 //implement one grid with 4 blocks and 256 threads in total, 8x8 threads for each block
@@ -57,7 +57,7 @@ __global__ void sum_array_gpu(int *a,int *b,int *c,int size)
     {
         c[gid] = a[gid] + b[gid];
     }
-    //printf("gid : %d, a[gid] : %d, b[gid] : %d, c[gid] : %d\n", gid, a[gid], b[gid], c[gid]);
+    printf("gid : %d, a[gid] : %d, b[gid] : %d, c[gid] : %d\n", gid, a[gid], b[gid], c[gid]);
 }
 
 void sum_array_cpu(int *a, int *b, int *c, int size)
@@ -71,18 +71,18 @@ bool checkResult(int *a, int *b, int size)
 {
     for(int i=0;i<size;i++){
         if(a[i]!=b[i]){
-            printf("the current value of a[i] and b[i] is: %d, %d",a[i],b[i]);
+            printf("the %d th current value of a[i] and b[i] is: %d, %d\n",i,a[i],b[i]);
             return false;
         }
-        //printf("the current value of a[i] and b[i] are the same");
+        //printf("the current value of a[i] and b[i] are the same\n");
     }
     return true;
 }
 
-int main()
+int main(int argc, char *argv[])
 {	
     int size = 1000;
-    //int block_size = 128;
+    int block_size = argc;
     int byte_size = size * sizeof(int);
     cudaError error;
 
@@ -101,8 +101,12 @@ int main()
         a_input[i] = i;
         b_input[i] = i*2;
     }
+    clock_t cpu_start,cpu_end;
+    cpu_start = clock();
     //cpu matrix sum calculation
     sum_array_cpu(a_input,b_input,c_output,size);
+    cpu_end = clock();
+
 
     int * a_gpu_input, * b_gpu_input, *c_gpu_output;
     error = cudaMalloc((void**)&a_gpu_input, byte_size);
@@ -114,19 +118,28 @@ int main()
     cudaMalloc((void**)&b_gpu_input, byte_size);
     cudaMalloc((void**)&c_gpu_output, byte_size);
 
-
+    clock_t h2d_start,h2d_end;
+    h2d_start = clock();
     cudaMemcpy(a_gpu_input,a_input,byte_size,cudaMemcpyHostToDevice);
     cudaMemcpy(b_gpu_input,b_input,byte_size,cudaMemcpyHostToDevice);
+    h2d_end = clock();
 
-    dim3 block(128);
-    dim3 grid(8);
+    dim3 block(block_size);
+    dim3 grid(size/block.x+((size%block.x==0)?0:1));
+
+    printf("size of block and grid is: %d, %d\n",block.x,grid.x);
+    
+    clock_t gpu_start,gpu_end;
+    gpu_start = clock();
     sum_array_gpu<<<grid,block>>>(a_gpu_input,b_gpu_input,c_gpu_output,size);
     cudaDeviceSynchronize();
-
-
+    gpu_end = clock();
+    
+    clock_t d2h_start,d2h_end;
+    d2h_start = clock();
     //memory transfer back to host
     cudaMemcpy(gpu_output,c_gpu_output,byte_size,cudaMemcpyDeviceToHost);
-
+    d2h_end = clock();
 
     //for(int i=0;i<size;i++){
     //    printf("the gpu_output[i] value is: %d",gpu_output[i]);
@@ -134,9 +147,9 @@ int main()
 
     bool test = checkResult(c_output,gpu_output,size);
     if(test==true){
-        printf("the result is true");
+        printf("the result is true\n");
     }else{
-        printf("the result is false");
+        printf("the result is false\n");
     }
 //    if(checkResult(c_gpu_output,c_output,size)==true){
 //        printf("the result is correct");
@@ -145,7 +158,9 @@ int main()
 //    }
 
     cudaDeviceSynchronize();
-    
+    printf("sum array cpu execution of time : %4.6f \n",(double)((double)(cpu_end - cpu_start)/CLOCKS_PER_SEC));
+    printf("sum array gpu execution of time : %4.6f \n",(double)((double)(gpu_end - gpu_start)/CLOCKS_PER_SEC));
+    printf("total sum array gpu execution of time : %4.6f \n",(double)((double)(gpu_end - gpu_start + h2d_end - h2d_start + d2h_end - d2h_start)/CLOCKS_PER_SEC));
     cudaFree(a_gpu_input);
     cudaFree(b_gpu_input);
     cudaFree(c_gpu_output);
