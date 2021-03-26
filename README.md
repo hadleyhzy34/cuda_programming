@@ -12,6 +12,16 @@ nvcc file_name -o excutable
 ## definition && declaration
 1.
 
+basic steps of a cuda program:
+* initialize memory in host
+* transfer the memory from host to device
+* launch the kernel from host
+* wait until kernel execution finish
+* transfer the memory from device to host
+* reclaim the memory
+
+
+
 
 ## memory transfer
 be careful that you cannot get access to memory space without using kernel/function from cuda libs, otherwise it would generate segmentation fault error
@@ -25,6 +35,14 @@ in order to get access of memory allocated to array using GPU, two methods:
 cudaMemcpy(gpu_output,c_gpu_output,byte_size,cudaMemcpyDeviceToHost);
 ```
 
+## asunchronous operation
+
+### synchronous and asynchronous
+
+The send, receive, and reply operations may be synchronous or asynchronous. A synchronous operation blocks a process till the operation completes. An asynchronous operation is non-blocking and only initiates the operation. The caller could discover completion by some other mechanism discussed later. (Does it make sense to have an asynchronous RPC send?) 
+
+so when we need the results of a kernel execution we have to explicitly wait in the host using cudaDeviceSynchronize function, after the kernel call, this is to ensure the device code completes before the main code returns. Kernel launches are asynchronous, meaning the host does not wait for the kernel to return before continuing on.
+
 ```c++
 __global__ void sum_array_gpu(int *a,int *b,int *c,int size)
 {
@@ -36,6 +54,9 @@ __global__ void sum_array_gpu(int *a,int *b,int *c,int size)
     //printf("gid : %d, a[gid] : %d, b[gid] : %d, c[gid] : %d\n", gid, a[gid], b[gid], c[gid]);
 }
 ```
+
+
+
 ## cuda error handling
 
 
@@ -102,5 +123,64 @@ printf("number of multiprocessors: %d\n",iProp.multiProcessorCount);
      printf("  Maximum block dimension                   :    (%d,%d,%d)\n",
          iProp.maxThreadsDim[0], iProp.maxThreadsDim[1], iProp.maxThreadsDim[2]);
 ```
+
+
+## CUDA architecture: single instruction multiple threads
+
+block<->streaming multiprocessor
+threads<->number of cores per streaming multiprocessor
+
+### relations between block, warps, threads
+
+check this folder execution file: /home/swarm/developments/cuda_programming/warps
+
+tutorial: https://www.bilibili.com/video/BV147411c7Fq?p=20
+
+### threads in the same warps to execute different instructions
+
+* first thought:
+
+```c++
+if(tid < 16){
+    //if block
+}else{
+    //else block
+}
+```
+* difficulties:
+GPU:SIMT(single instruction multiple threads)
+every threads in one warp has to execute same instruction
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

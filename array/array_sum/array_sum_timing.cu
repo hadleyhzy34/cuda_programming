@@ -2,7 +2,7 @@
 #include <device_launch_parameters.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <iostream>
 
 //#define gpuErrchk(ans) { gpuAssert((ans),__FILE__,__LINE__);}
 
@@ -132,7 +132,8 @@ int main(int argc, char *argv[])
     clock_t gpu_start,gpu_end;
     gpu_start = clock();
     sum_array_gpu<<<grid,block>>>(a_gpu_input,b_gpu_input,c_gpu_output,size);
-    cudaDeviceSynchronize();
+    auto x = cudaDeviceSynchronize();
+    std::cout<<"this is a test: "<<x<<std::endl;
     gpu_end = clock();
     
     clock_t d2h_start,d2h_end;
