@@ -1,8 +1,8 @@
-test: array_syn.o common.o
-	nvcc -o test array_syn.o common.o
+test: array_1.o common.o
+	nvcc -o test array_1.o common.o
 
-array_syn.o  : array_syn.cu common.h
-			nvcc -c array_syn.cu
+array_1.o  : array_1.cu common.h
+			nvcc -c array_1.cu
 
 common.o : common.cpp common.h
 			nvcc -c common.cpp

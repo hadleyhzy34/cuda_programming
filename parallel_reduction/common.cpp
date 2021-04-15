@@ -19,6 +19,7 @@ void initialize(int * input, const int array_size, INIT_PARAM PARAM, int x)
         for (int i = 0; i < array_size; i++)
         {
             input[i] = (int)(rand() & 0xFF);
+            //printf("current value of input[%d] is: %d\n", i, input[i]);
         }
     }
 }
