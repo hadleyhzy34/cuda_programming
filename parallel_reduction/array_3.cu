@@ -1,4 +1,4 @@
-/*notice this only works when array size is not larger than block size*/
+/*notice this works for any size of array, another method which is called interleaved pairs approach*/
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -15,46 +15,39 @@ __global__ void redunction_neighbored_pairs(int * input,
 	int tid = threadIdx.x;
 	int gid = blockDim.x * blockIdx.x + threadIdx.x;
 
-    //local data block pointer
-    //int * i_data = input + blockDim.x * blockIdx.x;
-
 	if (gid > size)
 		return;
 
-	for (int offset = 1; offset <= blockDim.x; offset *= 2)
-	{
-        //input[gid*offset*2] += input[gid*offset*2 + offset]
-        int index = 2 * offset * tid;
-        
-        if(gid*offset*2<size){
-            //input[gid*offset*2] += input[gid*offset*2 + offset];
-            printf("block id is: %d current offset is: %d current thread id is: %d current index is: %d and input value is: %d and %d\n",
-                   blockIdx.x, 
-                   offset, 
-                   gid, 
-                   gid*offset*2, 
-                   input[gid*offset*2], 
-                   input[gid*offset*2 + offset]);
-            
-            input[gid*offset*2] += input[gid*offset*2 + offset];
-            if(offset == blockDim.x){
-                printf("current tid/gid is: %d, %d, final value is: %d\n", tid, gid, input[gid*offset*2]);
-            }
+    int offset = blockDim.x * blockIdx.x * 2;
+    for(int i = blockDim.x; i >= 1; i /= 2 )
+    {
+        if( tid < i ){
+            input[offset+tid] += input[offset+ tid + i];
         }
-
-        //synchronize all threads inside one block
-		__syncthreads();
-	}
+        /*if(i*tid < blockDim.x){
+            printf("blockIdx.x: %d offset: %d gid: %d tid: %d index+offset: %d input[index+offset]: %d index+offset+i: %d input[index+offset+i]: %d\n", 
+                    blockIdx.x,
+                    offset,
+                    gid,
+                    tid,
+                    index+offset,
+                    input[index+offset],
+                    index+offset+i,
+                    input[index+offset+i]);
+            input[index+offset] += input[index+offset+i];
+        }*/
+        __syncthreads();
+    }
     
     //for each block, element that is assigned to the first core/thread of block will be the 
     //sum value of this block
-	if (tid == 0 && gid*2 <size)
+	if (tid == 0)
 	{
         //printf("final output value is: %d\n",input[gid]);
-		temp[blockIdx.x] = input[gid];
-        if(blockIdx.x == 1){
+		temp[blockIdx.x] = input[offset];
+        /*if(blockIdx.x == 1){
             printf("current block id and output value is: %d, %d\n", blockIdx.x, temp[blockIdx.x]);
-        }
+        }*/
         //printf("current block id is: %d, current gid is: %d, temp[%d] = %d\n",blockIdx.x,gid,blockIdx.x,temp[blockIdx.x]);
 	}
 }
@@ -63,10 +56,10 @@ int main(int argc, char ** argv)
 {
 	printf("Running neighbored pairs reduction kernel \n");
 //
-	//int size = 1 << 27; //128 Mb of data
-	int size = 1024;
+	int size = 1 << 27; //128 Mb of data
+	//int size = 1024;
     int byte_size = size * sizeof(int);
-	int block_size = 1024;
+	int block_size = 128;
 //
 	int * cpu_input, *h_ref;
 	cpu_input = (int*)malloc(byte_size);
@@ -77,7 +70,7 @@ int main(int argc, char ** argv)
 	int cpu_result = accumulate_cpu(cpu_input,size);
 //
 	dim3 block(block_size);
-	dim3 grid((size+block.x-1)/ block.x);
+	dim3 grid((size%(block_size*2)==0)?size/(block_size*2):size/(block_size*2)+1);
 //
 	printf("Kernel launch parameters | grid.x : %d, block.x : %d \n",grid.x, block.x);
 //
