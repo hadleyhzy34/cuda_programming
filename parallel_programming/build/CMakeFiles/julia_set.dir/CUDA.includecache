@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/hadley/Developments/cuda_programming/parallel_programming/src/julia_set.cu
+climits
+-
+cstddef
+-
+cstdint
+-
+cstdio
+-
+cstdlib
+-
+iostream
+-
+

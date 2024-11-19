@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/hadley/Developments/cuda_programming/basic_elements/src/utility.cu
+utility.h
+/home/hadley/Developments/cuda_programming/basic_elements/src/utility.h
+
+/home/hadley/Developments/cuda_programming/basic_elements/src/utility.h
+cstdlib
+-
+cuda_runtime.h
+-
+stdio.h
+-
+

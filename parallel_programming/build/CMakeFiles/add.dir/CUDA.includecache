@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/hadley/Developments/cuda_programming/parallel_programming/src/add_vectors.cu
+climits
+-
+cstddef
+-
+cstdint
+-
+cstdlib
+-
+iostream
+-
+

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libnew.a  CMakeFiles/new.dir/src/new.cu.o
+/usr/bin/ranlib libnew.a
