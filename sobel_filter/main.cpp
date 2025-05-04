@@ -1,5 +1,6 @@
 #include "src/constantSobelFilter.hpp"
 #include "src/sobelFilter.hpp"
+#include "src/textureSobelFilter.hpp"
 #include <ctime>
 #include <functional>
 #include <iostream>
@@ -35,6 +36,7 @@ void measureTime(
 
   printf("current function running time is: %f\n",
          (float)(clock() - start) / CLOCKS_PER_SEC);
+
   // Convert back to 8-bit for display
   outputFloat.convertTo(output, CV_8U, 255.0);
 
@@ -45,14 +47,17 @@ void measureTime(
 }
 
 int main(int argc, char *argv[]) {
-  std::string path = "/home/hadley/Pictures/Vd-Orig.png";
-  auto func0 = Constants::launchKernel;
+  // std::string path = "/home/hadley/Pictures/Vd-Orig.png";
+  std::string path = "/home/hadley/Pictures/test.png";
+  // auto func0 = Constants::launchKernel;
+  // auto func1 = Texture::launchKernel;
   auto func2 = SobelFilter::launchKernel;
+  // auto func0 = Constants::launchKernel;
+  auto func1 = Texture::launchKernel;
+  auto func0 = Constants::launchKernel;
   // auto func1 = SobelFilter::launchKernel;
   measureTime(path, func0);
+  measureTime(path, func1);
   measureTime(path, func2);
-
-  measureTime(path, Constants::launchKernel);
-  measureTime(path, SobelFilter::launchKernel);
   return 0;
 }

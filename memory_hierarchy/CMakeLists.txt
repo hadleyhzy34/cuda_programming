@@ -21,18 +21,10 @@ set(CMAKE_CUDA_STANDARD 14)         # C++14 standard
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Add executable
-add_executable(sobel_cuda
-  main.cpp
-  src/constantSobelFilter.hpp
-  src/constantSobelFilter.cu
-  src/sobelFilter.hpp
-  src/sobelFilter.cu
-  src/textureSobelFilter.hpp
-  src/textureSobelFilter.cu
-)
+add_executable(main src/cudaArray.cu)
 
 # Link OpenCV and CUDA libraries
-target_link_libraries(sobel_cuda
+target_link_libraries(main
   ${OpenCV_LIBS}
   ${CUDA_LIBRARIES}
 )

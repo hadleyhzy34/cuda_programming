@@ -1,4 +1,5 @@
 #include "constantSobelFilter.hpp"
+#include <ctime>
 
 // Sobel filter in constant memory
 __constant__ float sobelFilter[9];
@@ -13,6 +14,7 @@ __global__ void constantSobelKernel(const float *input, float *output,
     return;
 
   float sum = 0.0f;
+  int cnt = 0;
   for (int i = -1; i <= 1; i++) {
     for (int j = -1; j <= 1; j++) {
       int imageRow = row + i;
@@ -20,8 +22,9 @@ __global__ void constantSobelKernel(const float *input, float *output,
       if (imageRow >= 0 && imageRow < height && imageCol >= 0 &&
           imageCol < width) {
         float pixel = input[imageRow * width + imageCol];
-        int filterIdx = (i + 1) * 3 + (j + 1); // 2D to 1D index
-        sum += pixel * sobelFilter[filterIdx];
+        // int filterIdx = (i + 1) * 3 + (j + 1); // 2D to 1D index
+        sum += pixel * sobelFilter[cnt++];
+        // sum += pixel * sobelFilter[filterIdx];
       }
     }
   }
@@ -48,6 +51,7 @@ void Constants::launchKernel(float h_filter[], float *h_input, float *h_output,
   dim3 blockSize(16, 16);
   dim3 gridSize((width + blockSize.x - 1) / blockSize.x,
                 (height + blockSize.y - 1) / blockSize.y);
+
   constantSobelKernel<<<gridSize, blockSize>>>(d_input, d_output, width,
                                                height);
 

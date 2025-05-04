@@ -3,7 +3,7 @@ project(sobelcudademo LANGUAGES CXX CUDA)
 enable_language(CUDA)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find OpenCV (ensure OpenCV is installed and visible to CMake)
@@ -21,18 +21,11 @@ set(CMAKE_CUDA_STANDARD 14)         # C++14 standard
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Add executable
-add_executable(sobel_cuda
-  main.cpp
-  src/constantSobelFilter.hpp
-  src/constantSobelFilter.cu
-  src/sobelFilter.hpp
-  src/sobelFilter.cu
-  src/textureSobelFilter.hpp
-  src/textureSobelFilter.cu
-)
+add_executable(um 
+  src/unified_memory.cu)
 
 # Link OpenCV and CUDA libraries
-target_link_libraries(sobel_cuda
+target_link_libraries(um
   ${OpenCV_LIBS}
   ${CUDA_LIBRARIES}
 )
