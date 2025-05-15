@@ -56,8 +56,19 @@ int main(int argc, char *argv[]) {
   auto func1 = Texture::launchKernel;
   auto func0 = Constants::launchKernel;
   // auto func1 = SobelFilter::launchKernel;
+
+  // warm up
+  for (auto i = 0; i < 10; i++) {
+    measureTime(path, func0);
+  }
+
+  printf("running constant memory based sobel filter\n");
   measureTime(path, func0);
+
+  printf("running texture memory based sobel filter\n");
   measureTime(path, func1);
+
+  printf("running basic memory based sobel filter\n");
   measureTime(path, func2);
   return 0;
 }
