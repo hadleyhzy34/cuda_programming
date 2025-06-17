@@ -415,6 +415,13 @@ private:
     for (int i = 0; i < iterations; i++) {
       gaussianBlurGlobal<<<grid, block>>>(d_input, d_output, width, height);
       std::swap(d_input, d_output);
+
+      err = cudaGetLastError();
+      if (err != cudaSuccess) {
+        std::cerr << "Surface memory kernel failed at iteration " << i
+                  << cudaGetErrorString(err) << std::endl;
+        break;
+      }
     }
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
@@ -485,23 +492,21 @@ private:
     //   return;
     // }
     for (int i = 0; i < iterations; i++) {
-      gaussianBlurSurface<<<grid, block>>>(
-          surface1.getSurface(), surface2.getSurface(), width, height);
-      // if (i % 2 == 0) {
-      //   gaussianBlurSurface<<<grid, block>>>(
-      //       surface1.getSurface(), surface2.getSurface(), width, height);
-      // } else {
-      //   gaussianBlurSurface<<<grid, block>>>(
-      //       surface2.getSurface(), surface1.getSurface(), width, height);
-      // }
-      // err = cudaGetLastError();
-      // if (err != cudaSuccess) {
-      //   std::cerr << "Surface memory kernel failed at iteration " << i
-      //             << ":
-      //                "
-      //             << cudaGetErrorString(err) << std::endl;
-      //   break;
-      // }
+      // gaussianBlurSurface<<<grid, block>>>(
+      // surface1.getSurface(), surface2.getSurface(), width, height);
+      if (i % 2 == 0) {
+        gaussianBlurSurface<<<grid, block>>>(
+            surface1.getSurface(), surface2.getSurface(), width, height);
+      } else {
+        gaussianBlurSurface<<<grid, block>>>(
+            surface2.getSurface(), surface1.getSurface(), width, height);
+      }
+      err = cudaGetLastError();
+      if (err != cudaSuccess) {
+        std::cerr << "Surface memory kernel failed at iteration " << i
+                  << cudaGetErrorString(err) << std::endl;
+        break;
+      }
     }
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
@@ -662,7 +667,8 @@ int main() {
   // Run benchmarks
   SurfaceMemoryBenchmark benchmark;
   // benchmark.runBenchmarks(256, 256, 100);
-  benchmark.runBenchmarks(1024, 1024, 100);
+  // benchmark.runBenchmarks(1024, 1024, 100);
+  benchmark.runBenchmarks(500, 500, 100);
 
   std::cout << std::endl;
   std::cout << "=== WHEN TO USE SURFACE MEMORY ===" << std::endl;

@@ -43,6 +43,21 @@ target_link_libraries(surface-basic
 # Include directories (if needed)
 target_include_directories(surface-basic PRIVATE include)
 
+# Add executable
+add_executable(texture texture.cu)
+# add_executable(cublassaxpy src/cublasSaxpyTest.cu)
+
+# Link CUDA libraries
+target_link_libraries(texture
+  PRIVATE 
+  # CUDA::cudart      # CUDA runtime
+  CUDA::cublas      # Optional: If using cuBLAS
+  # CUDA::cufft       # Optional: If using cuFFT
+)
+
+# Include directories (if needed)
+target_include_directories(texture PRIVATE include)
+
 # Set CUDA architectures if needed
 # set(CMAKE_CUDA_ARCHITECTURES 75)
 # set(CMAKE_CUDA_ARCHITECTURES "all")
