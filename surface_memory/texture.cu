@@ -1,10 +1,13 @@
 // host_code_timed.cu
+#include <cstdio>
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define WIDTH 1024
-#define HEIGHT 1024
+// #define WIDTH 1024
+// #define HEIGHT 1024
+#define WIDTH 10000
+#define HEIGHT 10000
 #define MASK_WIDTH 5
 #define MASK_RADIUS (MASK_WIDTH / 2)
 
@@ -65,6 +68,7 @@ void loadGaussianMask() {
 
 int main() {
   size_t size = WIDTH * HEIGHT * sizeof(float);
+  printf("size of input is: %d\n", size);
   float *h_input = (float *)malloc(size);
   float *h_output = (float *)malloc(size);
 
@@ -89,7 +93,9 @@ int main() {
   cudaEventCreate(&stopGlobal);
 
   cudaEventRecord(startGlobal);
-  gaussianBlurGlobal<<<grid, block>>>(d_input, d_output, WIDTH, HEIGHT);
+  for (auto i = 0; i < 100; i++) {
+    gaussianBlurGlobal<<<grid, block>>>(d_input, d_output, WIDTH, HEIGHT);
+  }
   cudaEventRecord(stopGlobal);
   cudaEventSynchronize(stopGlobal);
 
@@ -127,7 +133,9 @@ int main() {
   cudaEventCreate(&stopTex);
 
   cudaEventRecord(startTex);
-  gaussianBlurTexture<<<grid, block>>>(texObj, d_output, WIDTH, HEIGHT);
+  for (auto i = 0; i < 100; i++) {
+    gaussianBlurTexture<<<grid, block>>>(texObj, d_output, WIDTH, HEIGHT);
+  }
   cudaEventRecord(stopTex);
   cudaEventSynchronize(stopTex);
 

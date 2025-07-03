@@ -19,7 +19,7 @@ public:
     // 1. Create CUDA array descriptor
     cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc<float>();
 
-    // 2. Allocate CUDA array
+    // 2. Allocate CUDA array and future bind surface
     cudaMallocArray(&cuda_array, &channel_desc, width, height,
                     cudaArraySurfaceLoadStore);
 
@@ -37,23 +37,10 @@ public:
       return;
     }
 
-    // res_desc.res.array.array = output_array;
-    // err = cudaCreateSurfaceObject(&output_surface, &res_desc);
-    // if (err != cudaSuccess) {
-    //   std::cerr << "cudaCreateSurfaceObject failed for output: "
-    //             << cudaGetErrorString(err) << "\n";
-    //   cudaDestroySurfaceObject(input_surface);
-    //   cudaFreeArray(input_array);
-    //   cudaFreeArray(output_array);
-    //   return 1;
-    // }
-
-    // 3. Create surface object
+    // 3. Create texture object
     cudaResourceDesc resource_desc = {};
     resource_desc.resType = cudaResourceTypeArray;
     resource_desc.res.array.array = cuda_array;
-
-    // cudaCreateSurfaceObject(&surface_object, &resource_desc);
 
     // 4. Optional: Create texture object for read operations
     cudaTextureDesc texture_desc = {};
@@ -139,7 +126,7 @@ __global__ void gaussianBlurSurface(cudaSurfaceObject_t input_surface,
   // Convolution with automatic boundary handling
   for (int dy = -2; dy <= 2; dy++) {
     for (int dx = -2; dx <= 2; dx++) {
-      // Surface automatically handles boundary conditions
+      // Surface not automatically handles boundary conditions
       if (x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height) {
         float pixel;
         surf2Dread(&pixel, input_surface, (x + dx) * sizeof(float), y + dy);
@@ -492,15 +479,17 @@ private:
     //   return;
     // }
     for (int i = 0; i < iterations; i++) {
+      gaussianBlurSurface<<<grid, block>>>(
+          surface1.getSurface(), surface2.getSurface(), width, height);
       // gaussianBlurSurface<<<grid, block>>>(
       // surface1.getSurface(), surface2.getSurface(), width, height);
-      if (i % 2 == 0) {
-        gaussianBlurSurface<<<grid, block>>>(
-            surface1.getSurface(), surface2.getSurface(), width, height);
-      } else {
-        gaussianBlurSurface<<<grid, block>>>(
-            surface2.getSurface(), surface1.getSurface(), width, height);
-      }
+      // if (i % 2 == 0) {
+      //   gaussianBlurSurface<<<grid, block>>>(
+      //       surface1.getSurface(), surface2.getSurface(), width, height);
+      // } else {
+      //   gaussianBlurSurface<<<grid, block>>>(
+      //       surface2.getSurface(), surface1.getSurface(), width, height);
+      // }
       err = cudaGetLastError();
       if (err != cudaSuccess) {
         std::cerr << "Surface memory kernel failed at iteration " << i
