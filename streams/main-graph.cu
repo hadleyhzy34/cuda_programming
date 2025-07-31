@@ -81,14 +81,23 @@ int main() {
 
   cudaGraph_t graph;
   cudaGraphExec_t instance;
-  cudaStream_t stream = 0;
+  cudaStream_t stream;
+  CHECK_CUDA(cudaStreamCreate(&stream));
+
+  // Create separate events for graph timing
+  cudaEvent_t graph_start, graph_stop;
+  CHECK_CUDA(cudaEventCreate(&graph_start));
+  CHECK_CUDA(cudaEventCreate(&graph_stop));
+
+  // // Ensure stream is idle before capture
+  // CHECK_CUDA(cudaStreamSynchronize(stream));
 
   // Start Capture
   CHECK_CUDA(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
 
   // Note: We only need to capture ONE iteration of the work
-  add_vectors<<<(N + 255) / 256, 256>>>(d_c, d_a, d_b, N);
-  scale_vector<<<(N + 255) / 256, 256>>>(d_c, 5.0f, N);
+  add_vectors<<<(N + 255) / 256, 256, 0, stream>>>(d_c, d_a, d_b, N);
+  scale_vector<<<(N + 255) / 256, 256, 0, stream>>>(d_c, 5.0f, N);
 
   // End Capture
   CHECK_CUDA(cudaStreamEndCapture(stream, &graph));
@@ -101,15 +110,15 @@ int main() {
   CHECK_CUDA(cudaStreamSynchronize(stream));
 
   // Time the graph execution
-  CHECK_CUDA(cudaEventRecord(start));
+  CHECK_CUDA(cudaEventRecord(graph_start, stream));
   for (int i = 0; i < iterations; ++i) {
     CHECK_CUDA(cudaGraphLaunch(instance, stream));
   }
-  CHECK_CUDA(cudaEventRecord(stop));
-  CHECK_CUDA(cudaEventSynchronize(stop));
+  CHECK_CUDA(cudaEventRecord(graph_stop, stream));
+  CHECK_CUDA(cudaEventSynchronize(graph_stop));
 
   float graph_ms = 0;
-  CHECK_CUDA(cudaEventElapsedTime(&graph_ms, start, stop));
+  CHECK_CUDA(cudaEventElapsedTime(&graph_ms, graph_start, graph_stop));
   std::cout << "Graph-based execution took: " << graph_ms << " ms" << std::endl;
 
   CHECK_CUDA(cudaMemcpy(h_c_out_graph, d_c, bytes, cudaMemcpyDeviceToHost));
@@ -128,8 +137,11 @@ int main() {
   // Cleanup
   CHECK_CUDA(cudaEventDestroy(start));
   CHECK_CUDA(cudaEventDestroy(stop));
+  CHECK_CUDA(cudaEventDestroy(graph_start));
+  CHECK_CUDA(cudaEventDestroy(graph_stop));
   CHECK_CUDA(cudaGraphExecDestroy(instance));
   CHECK_CUDA(cudaGraphDestroy(graph));
+  CHECK_CUDA(cudaStreamDestroy(stream));
   CHECK_CUDA(cudaFree(d_a));
   CHECK_CUDA(cudaFree(d_b));
   CHECK_CUDA(cudaFree(d_c));
