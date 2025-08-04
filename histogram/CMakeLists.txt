@@ -32,9 +32,7 @@ set(CMAKE_CUDA_ARCHITECTURES 75)
 
 # --- 4. Define the Executable ---
 # Tell CMake to create an executable named 'merge_app' from 'merge.cu'
-add_executable(merge_app main-merge.cu)
-add_executable(merge_sm main-sm-merge.cu)
-add_executable(pinned pinned.cu)
+add_executable(main main.cu)
 
 # --- 5. (Optional but good practice) Print Info ---
 # Display the CUDA architectures being compiled for.
