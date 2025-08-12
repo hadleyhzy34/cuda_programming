@@ -172,10 +172,21 @@ void SensorProcessor::build_graph() {
 }
 
 void SensorProcessor::process_frame(const std::vector<Point>& frame_data, float new_filter_threshold) {
+<<<<<<< HEAD
     CHECK_CUDA(cudaMemsetAsync(d_hazard_flag_, 0, sizeof(int), stream_));
     CHECK_CUDA(cudaMemcpyAsync(d_points_, frame_data.data(), frame_data.size() * sizeof(Point), cudaMemcpyHostToDevice, stream_));
 
     // Update preprocess kernel params as before
+=======
+    // Reset the hazard flag on the GPU before processing
+    CHECK_CUDA(cudaMemsetAsync(d_hazard_flag_, 0, sizeof(int), stream_));
+
+    // 1. Asynchronously copy new frame data to the device
+    CHECK_CUDA(cudaMemcpyAsync(d_points_, frame_data.data(), frame_data.size() * sizeof(Point), cudaMemcpyHostToDevice, stream_));
+
+    // --- GRAPH UPDATE ---
+    // Update the filter threshold in our instantiated graph. This is very fast.
+>>>>>>> a5eb08724efa9d3eab0402ac9dae2434dda22bc6
     cudaKernelNodeParams preprocess_params = {0};
     preprocess_params.func = (void*)preprocess_points;
     preprocess_params.gridDim = grid_;
@@ -184,6 +195,7 @@ void SensorProcessor::process_frame(const std::vector<Point>& frame_data, float 
     preprocess_params.kernelParams = preprocess_args;
     CHECK_CUDA(cudaGraphExecKernelNodeSetParams(instance_, preprocess_node_, &preprocess_params));
 
+<<<<<<< HEAD
     // Launch the graph (preprocess + hazard detect)
     CHECK_CUDA(cudaGraphLaunch(instance_, stream_));
 
@@ -197,6 +209,14 @@ void SensorProcessor::process_frame(const std::vector<Point>& frame_data, float 
         log_hazard_kernel<<<1,1,0,stream_>>>(d_hazard_log_counter_);
         CHECK_CUDA(cudaStreamSynchronize(stream_));
     }
+=======
+    // --- GRAPH LAUNCH ---
+    // Launch the entire updated pipeline. The GPU will handle the conditional logic internally.
+    CHECK_CUDA(cudaGraphLaunch(instance_, stream_));
+
+    // Wait for this frame to be fully processed before continuing
+    CHECK_CUDA(cudaStreamSynchronize(stream_));
+>>>>>>> a5eb08724efa9d3eab0402ac9dae2434dda22bc6
 }
 
 SensorProcessor::~SensorProcessor() {

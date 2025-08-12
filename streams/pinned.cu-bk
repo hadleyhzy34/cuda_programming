@@ -1,0 +1,67 @@
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+#include <driver_types.h>
+#include <iostream>
+
+const int N = 1 << 20; // 1 million elements
+
+__global__ void vectorAddKernel(float *A, float *B, float *C, int N) {
+  int i = threadIdx.x + blockIdx.x * blockDim.x;
+  if (i < N)
+    C[i] = A[i] + B[i];
+}
+
+int main() {
+  float *h_A, *h_B, *h_C;
+  float *d_A, *d_B, *d_C;
+
+  // // Allocate pinned memory
+  // cudaMallocHost(&h_A, N * sizeof(float));
+  // cudaMallocHost(&h_B, N * sizeof(float));
+  // cudaMallocHost(&h_C, N * sizeof(float));
+  cudaHostAlloc((void **)&h_A, N * sizeof(float), cudaHostAllocMapped);
+  cudaHostAlloc((void **)&h_B, N * sizeof(float), cudaHostAllocMapped);
+  cudaHostAlloc((void **)&h_C, N * sizeof(float), cudaHostAllocMapped);
+
+  // Initialize host data
+  for (int i = 0; i < N; ++i) {
+    h_A[i] = 1.0f;
+    h_B[i] = 2.0f;
+  }
+
+  // Allocate device memory
+  cudaMalloc(&d_A, N * sizeof(float));
+  cudaMalloc(&d_B, N * sizeof(float));
+  cudaMalloc(&d_C, N * sizeof(float));
+
+  // Copy to device
+  cudaMemcpy(d_A, h_A, N * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_B, h_B, N * sizeof(float), cudaMemcpyHostToDevice);
+
+  // Launch kernel
+  int threadsPerBlock = 256;
+  int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+  vectorAddKernel<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, N);
+
+  // Copy result back
+  cudaMemcpy(h_C, d_C, N * sizeof(float), cudaMemcpyDeviceToHost);
+
+  // verification
+  for (int i = 0; i < N; i++) {
+    if (h_C[i] != 3) {
+      std::cerr << "error in: " << i << std::endl;
+    }
+  }
+  std::cout << "verification successful\n";
+  // std::cout << "Result[0] = " << h_C[0] << std::endl;
+
+  // Cleanup
+  cudaFreeHost(h_A);
+  cudaFreeHost(h_B);
+  cudaFreeHost(h_C);
+  cudaFree(d_A);
+  cudaFree(d_B);
+  cudaFree(d_C);
+
+  return 0;
+}
