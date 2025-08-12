@@ -17,6 +17,8 @@ find_package(CUDAToolkit REQUIRED)
 add_executable(cublassaxpy src/cublasSaxpyTest.cu)
 add_executable(cudastream main-stream.cu)
 add_executable(cuda-graph main-graph.cu)
+add_executable(cuda-benchmark main-benchmark.cu)
+# add_executable(cuda-advanced main-advanced.cu)
 
 # Link CUDA libraries
 target_link_libraries(cublassaxpy
@@ -30,6 +32,8 @@ target_link_libraries(cublassaxpy
 target_include_directories(cublassaxpy PRIVATE include)
 target_include_directories(cudastream PRIVATE include)
 target_include_directories(cuda-graph PRIVATE include)
+target_include_directories(cuda-benchmark PRIVATE include)
+# target_include_directories(cuda-advanced PRIVATE include)
 
 # # Link CUDA libraries
 # target_link_libraries(transpose ${CUDA_LIBRARIES})
