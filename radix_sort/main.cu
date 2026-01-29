@@ -1,44 +1,56 @@
-#include <algorithm>
 #include <cuda_runtime.h>
+
+#include <algorithm>
 #include <iostream>
 #include <random>
 #include <vector>
 
 // Enhanced error checking macro with more context
-#define CUDA_CHECK_KERNEL()                                                    \
-  do {                                                                         \
-    cudaError_t err = cudaGetLastError();                                      \
-    if (err != cudaSuccess) {                                                  \
-      fprintf(stderr, "CUDA Kernel Error in %s at line %d: %s\n", __FILE__,    \
-              __LINE__, cudaGetErrorString(err));                              \
-      exit(EXIT_FAILURE);                                                      \
-    }                                                                          \
-    err = cudaDeviceSynchronize();                                             \
-    if (err != cudaSuccess) {                                                  \
-      fprintf(stderr, "CUDA Synchronization Error in %s at line %d: %s\n",     \
-              __FILE__, __LINE__, cudaGetErrorString(err));                    \
-      exit(EXIT_FAILURE);                                                      \
-    }                                                                          \
+#define CUDA_CHECK_KERNEL()                                        \
+  do {                                                             \
+    cudaError_t err = cudaGetLastError();                          \
+    if (err != cudaSuccess) {                                      \
+      fprintf(stderr,                                              \
+              "CUDA Kernel Error in %s at line %d: %s\n",          \
+              __FILE__,                                            \
+              __LINE__,                                            \
+              cudaGetErrorString(err));                            \
+      exit(EXIT_FAILURE);                                          \
+    }                                                              \
+    err = cudaDeviceSynchronize();                                 \
+    if (err != cudaSuccess) {                                      \
+      fprintf(stderr,                                              \
+              "CUDA Synchronization Error in %s at line %d: %s\n", \
+              __FILE__,                                            \
+              __LINE__,                                            \
+              cudaGetErrorString(err));                            \
+      exit(EXIT_FAILURE);                                          \
+    }                                                              \
   } while (0)
 
-#define CHECK_CUDA(call)                                                       \
-  do {                                                                         \
-    cudaError_t err = call;                                                    \
-    if (err != cudaSuccess) {                                                  \
-      fprintf(stderr, "CUDA Error in %s at line %d: %s\n", __FILE__, __LINE__, \
-              cudaGetErrorString(err));                                        \
-      exit(EXIT_FAILURE);                                                      \
-    }                                                                          \
+#define CHECK_CUDA(call)                           \
+  do {                                             \
+    cudaError_t err = call;                        \
+    if (err != cudaSuccess) {                      \
+      fprintf(stderr,                              \
+              "CUDA Error in %s at line %d: %s\n", \
+              __FILE__,                            \
+              __LINE__,                            \
+              cudaGetErrorString(err));            \
+      exit(EXIT_FAILURE);                          \
+    }                                              \
   } while (0)
 
 // We use a 4-bit radix, so there are 16 possible "digit" values (bins).
 constexpr int RADIX_BITS = 4;
-constexpr int RADIX_SIZE = 1 << RADIX_BITS; // 16
+constexpr int RADIX_SIZE = 1 << RADIX_BITS;  // 16
 
 // Phase 1: Each block computes a local histogram of the 4-bit keys for its tile
 // of data.
-__global__ void histogram_kernel(const unsigned int *in,
-                                 unsigned int *histograms, int n, int pass) {
+__global__ void histogram_kernel(const unsigned int* in,
+                                 unsigned int* histograms,
+                                 int n,
+                                 int pass) {
   // Use fast shared memory for each block's private counters
   extern __shared__ unsigned int s_counts[];
 
@@ -53,8 +65,7 @@ __global__ void histogram_kernel(const unsigned int *in,
   __syncthreads();
 
   int shift = pass * RADIX_BITS;
-  int elements_per_thread =
-      (n + (block_dim * gridDim.x) - 1) / (block_dim * gridDim.x);
+  int elements_per_thread = (n + (block_dim * gridDim.x) - 1) / (block_dim * gridDim.x);
   int start_idx = (block_id * block_dim + tid) * elements_per_thread;
   int end_idx = min(start_idx + elements_per_thread, n);
 
@@ -75,8 +86,11 @@ __global__ void histogram_kernel(const unsigned int *in,
 
 // Phase 2: Each block re-reads its tile and scatters elements to their sorted
 // positions.
-__global__ void scatter_kernel(const unsigned int *in, unsigned int *out,
-                               const unsigned int *offsets, int n, int pass) {
+__global__ void scatter_kernel(const unsigned int* in,
+                               unsigned int* out,
+                               const unsigned int* offsets,
+                               int n,
+                               int pass) {
   // Use shared memory to cache the starting positions for this block
   extern __shared__ unsigned int s_offsets[];
 
@@ -92,8 +106,7 @@ __global__ void scatter_kernel(const unsigned int *in, unsigned int *out,
   __syncthreads();
 
   int shift = pass * RADIX_BITS;
-  int elements_per_thread =
-      (n + (block_dim * gridDim.x) - 1) / (block_dim * gridDim.x);
+  int elements_per_thread = (n + (block_dim * gridDim.x) - 1) / (block_dim * gridDim.x);
   int start_idx = (block_id * block_dim + tid) * elements_per_thread;
   int end_idx = min(start_idx + elements_per_thread, n);
 
@@ -110,37 +123,38 @@ __global__ void scatter_kernel(const unsigned int *in, unsigned int *out,
 
 // --- Host-side Orchestration ---
 
-void radix_sort(unsigned int *d_in, int n) {
+void radix_sort(unsigned int* d_in, int n) {
   int threads = 256;
   int blocks = std::min((n + (threads * 4) - 1) / (threads * 4), 1024);
 
-  unsigned int *d_out;
+  unsigned int* d_out;
   CHECK_CUDA(cudaMalloc(&d_out, n * sizeof(unsigned int)));
 
-  unsigned int *d_histograms;
-  CHECK_CUDA(
-      cudaMalloc(&d_histograms, blocks * RADIX_SIZE * sizeof(unsigned int)));
+  unsigned int* d_histograms;
+  CHECK_CUDA(cudaMalloc(&d_histograms, blocks * RADIX_SIZE * sizeof(unsigned int)));
 
-  unsigned int *d_scan_values;
-  CHECK_CUDA(
-      cudaMalloc(&d_scan_values, blocks * RADIX_SIZE * sizeof(unsigned int)));
+  unsigned int* d_scan_values;
+  CHECK_CUDA(cudaMalloc(&d_scan_values, blocks * RADIX_SIZE * sizeof(unsigned int)));
 
   std::vector<unsigned int> h_histograms(blocks * RADIX_SIZE);
 
-  unsigned int *current_in = d_in;
-  unsigned int *current_out = d_out;
+  unsigned int* current_in = d_in;
+  unsigned int* current_out = d_out;
 
   // 32-bit integers, 4 bits per pass -> 8 passes
   for (int pass = 0; pass < 32 / RADIX_BITS; ++pass) {
     // Launch histogram kernel and check for errors
-    histogram_kernel<<<blocks, threads, RADIX_SIZE * sizeof(unsigned int)>>>(
-        current_in, d_histograms, n, pass);
+    histogram_kernel<<<blocks, threads, RADIX_SIZE * sizeof(unsigned int)>>>(current_in,
+                                                                             d_histograms,
+                                                                             n,
+                                                                             pass);
     CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaDeviceSynchronize());
 
     // NOTE: For simplicity, this prefix sum is done on the host. For maximum
     // performance, this would be its own highly-optimized parallel scan kernel.
-    CHECK_CUDA(cudaMemcpy(h_histograms.data(), d_histograms,
+    CHECK_CUDA(cudaMemcpy(h_histograms.data(),
+                          d_histograms,
                           h_histograms.size() * sizeof(unsigned int),
                           cudaMemcpyDeviceToHost));
 
@@ -161,19 +175,22 @@ void radix_sort(unsigned int *d_in, int n) {
     std::vector<unsigned int> per_bin_offsets(RADIX_SIZE, 0);
     for (int i = 0; i < blocks; ++i) {
       for (int j = 0; j < RADIX_SIZE; ++j) {
-        h_scan_values[i * RADIX_SIZE + j] =
-            global_offsets[j] + per_bin_offsets[j];
+        h_scan_values[i * RADIX_SIZE + j] = global_offsets[j] + per_bin_offsets[j];
         per_bin_offsets[j] += h_histograms[i * RADIX_SIZE + j];
       }
     }
 
-    CHECK_CUDA(cudaMemcpy(d_scan_values, h_scan_values.data(),
+    CHECK_CUDA(cudaMemcpy(d_scan_values,
+                          h_scan_values.data(),
                           h_scan_values.size() * sizeof(unsigned int),
                           cudaMemcpyHostToDevice));
 
     // Launch scatter kernel and check for errors
-    scatter_kernel<<<blocks, threads, RADIX_SIZE * sizeof(unsigned int)>>>(
-        current_in, current_out, d_scan_values, n, pass);
+    scatter_kernel<<<blocks, threads, RADIX_SIZE * sizeof(unsigned int)>>>(current_in,
+                                                                           current_out,
+                                                                           d_scan_values,
+                                                                           n,
+                                                                           pass);
     CHECK_CUDA(cudaGetLastError());
     CHECK_CUDA(cudaDeviceSynchronize());
 
@@ -181,8 +198,7 @@ void radix_sort(unsigned int *d_in, int n) {
   }
 
   if (current_in != d_in) {
-    CHECK_CUDA(cudaMemcpy(d_in, d_in, n * sizeof(unsigned int),
-                          cudaMemcpyDeviceToDevice));
+    CHECK_CUDA(cudaMemcpy(d_in, d_in, n * sizeof(unsigned int), cudaMemcpyDeviceToDevice));
   }
 
   CHECK_CUDA(cudaFree(d_out));
@@ -194,7 +210,7 @@ void radix_sort(unsigned int *d_in, int n) {
 }
 
 int main() {
-  const int N = 1024 * 1024 * 16; // 16 Million integers
+  const int N = 1024 * 1024 * 16;  // 16 Million integers
 
   std::vector<unsigned int> h_in(N);
   std::vector<unsigned int> h_out(N);
@@ -206,20 +222,18 @@ int main() {
     h_in[i] = dis(gen);
   }
 
-  unsigned int *d_data;
+  unsigned int* d_data;
   CHECK_CUDA(cudaMalloc(&d_data, N * sizeof(unsigned int)));
 
   CHECK_CUDA(cudaGetLastError());
   CHECK_CUDA(cudaDeviceSynchronize());
-  CHECK_CUDA(cudaMemcpy(d_data, h_in.data(), N * sizeof(unsigned int),
-                        cudaMemcpyHostToDevice));
+  CHECK_CUDA(cudaMemcpy(d_data, h_in.data(), N * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
   cudaEvent_t start, stop;
   CHECK_CUDA(cudaEventCreate(&start));
   CHECK_CUDA(cudaEventCreate(&stop));
 
-  std::cout << "Starting CUDA Radix Sort for " << N << " elements..."
-            << std::endl;
+  std::cout << "Starting CUDA Radix Sort for " << N << " elements..." << std::endl;
   CHECK_CUDA(cudaEventRecord(start));
 
   radix_sort(d_data, N);
@@ -231,8 +245,7 @@ int main() {
   CHECK_CUDA(cudaEventElapsedTime(&ms, start, stop));
   std::cout << "  -> CUDA Sort Time: " << ms << " ms" << std::endl;
 
-  CHECK_CUDA(cudaMemcpy(h_out.data(), d_data, N * sizeof(unsigned int),
-                        cudaMemcpyDeviceToHost));
+  CHECK_CUDA(cudaMemcpy(h_out.data(), d_data, N * sizeof(unsigned int), cudaMemcpyDeviceToHost));
 
   std::cout << "Verifying against std::sort..." << std::endl;
   std::sort(h_in.begin(), h_in.end());
@@ -240,8 +253,8 @@ int main() {
   bool success = true;
   for (long long i = 0; i < N; ++i) {
     if (h_in[i] != h_out[i]) {
-      std::cerr << "  -> Mismatch at index " << i << ": expected " << h_in[i]
-                << ", got " << h_out[i] << std::endl;
+      std::cerr << "  -> Mismatch at index " << i << ": expected " << h_in[i] << ", got "
+                << h_out[i] << std::endl;
       success = false;
       break;
     }
